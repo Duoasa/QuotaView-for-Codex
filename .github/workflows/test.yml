@@ -1,0 +1,21 @@
+name: Test plugin bridge
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  bridge:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate JSON
+        run: |
+          python3 -m json.tool plugins/quotaview/.codex-plugin/plugin.json >/dev/null
+          python3 -m json.tool plugins/quotaview/hooks/hooks.json >/dev/null
+          python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
+      - name: Test bridge
+        run: tests/test-bridge.zsh

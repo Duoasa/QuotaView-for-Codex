@@ -1,0 +1,77 @@
+{
+  "description": "Write sanitized Codex lifecycle events for the QuotaView macOS activity island.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/quotaview-bridge\" SessionStart",
+            "timeout": 3,
+            "statusMessage": "Updating QuotaView activity"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/quotaview-bridge\" SessionEnd",
+            "timeout": 3,
+            "statusMessage": "Updating QuotaView activity"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/quotaview-bridge\" UserPromptSubmit",
+            "timeout": 3,
+            "statusMessage": "Updating QuotaView activity"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/quotaview-bridge\" PreToolUse",
+            "timeout": 3,
+            "statusMessage": "Updating QuotaView activity"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/quotaview-bridge\" PostToolUse",
+            "timeout": 3,
+            "statusMessage": "Updating QuotaView activity"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/quotaview-bridge\" Stop",
+            "timeout": 3,
+            "statusMessage": "Updating QuotaView activity"
+          }
+        ]
+      }
+    ]
+  }
+}

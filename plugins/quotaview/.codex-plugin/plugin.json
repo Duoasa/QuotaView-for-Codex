@@ -1,0 +1,31 @@
+{
+  "name": "quotaview",
+  "version": "1.0.0-preview.1",
+  "description": "Streams sanitized local Codex activity events to the QuotaView macOS app.",
+  "author": {
+    "name": "Duoasa",
+    "url": "https://github.com/Duoasa"
+  },
+  "homepage": "https://github.com/Duoasa/QuotaView-for-Codex",
+  "repository": "https://github.com/Duoasa/QuotaView-for-Codex",
+  "license": "MIT",
+  "keywords": ["quotaview", "usage", "activity", "macos", "privacy"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "QuotaView for Codex",
+    "shortDescription": "Private local activity bridge for QuotaView.",
+    "longDescription": "Writes a minimal, sanitized stream of Codex lifecycle events for the QuotaView macOS activity island. No prompts, commands, files, responses, credentials, or network uploads are collected.",
+    "developerName": "Duoasa",
+    "category": "Productivity",
+    "capabilities": ["Local", "Read-only", "Privacy"],
+    "websiteURL": "https://github.com/Duoasa/QuotaView-for-Codex",
+    "privacyPolicyURL": "https://github.com/Duoasa/QuotaView-for-Codex/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/Duoasa/QuotaView-for-Codex/blob/main/TERMS.md",
+    "defaultPrompt": [
+      "Connect the QuotaView Codex Island.",
+      "Check my QuotaView plugin connection.",
+      "Explain what QuotaView activity data stores."
+    ],
+    "brandColor": "#3A3A3A"
+  }
+}

@@ -1,0 +1,271 @@
+#!/bin/zsh
+
+# QuotaView for Codex bridge protocol v1.
+# This hook is intentionally fail-open: a bridge error must never block Codex.
+set +e
+setopt NO_NOMATCH
+umask 077
+
+plugin_version="1.0.0-preview.1"
+protocol_version="1"
+event_schema_version="1"
+event_name="${1:-}"
+plugin_root="${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${0:A:h:h}}}"
+data_root="${PLUGIN_DATA:-${CODEX_PLUGIN_DATA:-${plugin_root}/data}}"
+events_root="${data_root}/events"
+lock_root="${data_root}/.sequence.lock"
+input_file=""
+event_temp=""
+status_temp=""
+bridge_temp=""
+lock_acquired="false"
+
+cleanup() {
+    [[ -n "${input_file}" ]] && /bin/rm -f -- "${input_file}"
+    [[ -n "${event_temp}" ]] && /bin/rm -f -- "${event_temp}"
+    [[ -n "${status_temp}" ]] && /bin/rm -f -- "${status_temp}"
+    [[ -n "${bridge_temp}" ]] && /bin/rm -f -- "${bridge_temp}"
+    [[ "${lock_acquired}" == "true" && -d "${lock_root}" ]] \
+        && /bin/rmdir "${lock_root}" 2>/dev/null
+}
+trap cleanup EXIT INT TERM
+
+json_value() {
+    /usr/bin/plutil -extract "$1" raw -o - "${input_file}" 2>/dev/null
+}
+
+hash_identifier() {
+    /usr/bin/printf '%s' "$1" \
+        | /usr/bin/shasum -a 256 \
+        | /usr/bin/awk '{print $1}'
+}
+
+json_escape() {
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    value="${value//$'\n'/\\n}"
+    value="${value//$'\r'/\\r}"
+    value="${value//$'\t'/\\t}"
+    /usr/bin/printf '%s' "${value}"
+}
+
+percent_encode() {
+    local raw="$1"
+    local encoded=""
+    local character
+    local numeric
+    local old_locale="${LC_ALL:-}"
+    export LC_ALL=C
+    for character in ${(s::)raw}; do
+        case "${character}" in
+            [A-Za-z0-9.~_-]) encoded+="${character}" ;;
+            *)
+                /usr/bin/printf -v numeric '%02X' "'${character}"
+                encoded+="%${numeric}"
+                ;;
+        esac
+    done
+    [[ -n "${old_locale}" ]] && export LC_ALL="${old_locale}" || unset LC_ALL
+    /usr/bin/printf '%s' "${encoded}"
+}
+
+ensure_bridge() {
+    /bin/mkdir -p -- "${events_root}" || return 1
+    /bin/chmod 700 "${data_root}" "${events_root}" 2>/dev/null
+
+    local installation_file="${data_root}/.installation-id"
+    if [[ ! -s "${installation_file}" ]]; then
+        /usr/bin/uuidgen \
+            | /usr/bin/tr '[:upper:]' '[:lower:]' \
+            > "${installation_file}" || return 1
+        /bin/chmod 600 "${installation_file}" 2>/dev/null
+    fi
+    installation_identifier="$(
+        /usr/bin/tr -d '\r\n' < "${installation_file}"
+    )"
+    if [[ ! "${installation_identifier}" =~ '^[A-Za-z0-9._-]{8,128}$' ]]; then
+        /usr/bin/uuidgen \
+            | /usr/bin/tr '[:upper:]' '[:lower:]' \
+            > "${installation_file}" || return 1
+        /bin/chmod 600 "${installation_file}" 2>/dev/null
+        installation_identifier="$(
+            /usr/bin/tr -d '\r\n' < "${installation_file}"
+        )"
+    fi
+    [[ "${installation_identifier}" =~ '^[A-Za-z0-9._-]{8,128}$' ]] \
+        || return 1
+
+    created_at="$(
+        /usr/bin/plutil -extract createdAt raw -o - \
+            "${data_root}/bridge.json" 2>/dev/null
+    )"
+    [[ "${created_at}" =~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' ]] \
+        || created_at="$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)"
+    bridge_temp="${data_root}/.bridge.$$.json"
+    /usr/bin/printf '%s\n' \
+        '{' \
+        '  "pluginId": "quotaview",' \
+        "  \"pluginVersion\": \"${plugin_version}\"," \
+        '  "distributionChannel": "git-marketplace",' \
+        "  \"bridgeProtocolVersion\": ${protocol_version}," \
+        "  \"eventSchemaVersion\": ${event_schema_version}," \
+        "  \"installationIdentifier\": \"${installation_identifier}\"," \
+        "  \"createdAt\": \"${created_at}\"," \
+        '  "capabilities": ["codex-activity-events"]' \
+        '}' > "${bridge_temp}" || return 1
+    /bin/mv -f -- "${bridge_temp}" "${data_root}/bridge.json" || return 1
+    bridge_temp=""
+}
+
+if [[ "${event_name}" == "--pair" ]]; then
+    ensure_bridge || exit 0
+    encoded_path="$(percent_encode "${data_root}")"
+    /usr/bin/open "quotaview://pair?protocol=1&plugin=quotaview&pathHint=${encoded_path}" >/dev/null 2>&1
+    /usr/bin/printf '%s\n' "QuotaView pairing opened. Confirm the PLUGIN_DATA folder in QuotaView."
+    exit 0
+fi
+
+if [[ "${event_name}" == "--diagnose" ]]; then
+    ensure_bridge || {
+        /usr/bin/printf '%s\n' "QuotaView bridge data could not be initialized."
+        exit 0
+    }
+    latest_sequence="$(/bin/cat "${data_root}/.sequence" 2>/dev/null)"
+    /usr/bin/printf '%s\n' \
+        "QuotaView bridge protocol: ${protocol_version}" \
+        "Plugin version: ${plugin_version}" \
+        "Latest local event sequence: ${latest_sequence:-none}" \
+        "Network access: none"
+    exit 0
+fi
+
+case "${event_name}" in
+    SessionStart|SessionEnd|UserPromptSubmit|PreToolUse|PostToolUse|Stop) ;;
+    *) exit 0 ;;
+esac
+
+ensure_bridge || exit 0
+input_file="${data_root}/.hook-input.$$.json"
+/bin/cat > "${input_file}" || exit 0
+[[ -s "${input_file}" ]] || exit 0
+
+session_identifier="$(json_value session_id)"
+[[ -n "${session_identifier}" ]] || session_identifier="$(json_value thread_id)"
+[[ -n "${session_identifier}" ]] || exit 0
+session_hash="$(hash_identifier "${session_identifier}")"
+turn_identifier="$(json_value turn_id)"
+turn_hash=""
+[[ -n "${turn_identifier}" ]] && turn_hash="$(hash_identifier "${turn_identifier}")"
+
+workspace_path="$(json_value cwd)"
+workspace_name=""
+if [[ -n "${workspace_path}" ]]; then
+    workspace_name="${workspace_path:t}"
+    workspace_name="$(
+        /usr/bin/printf '%s' "${workspace_name}" \
+            | /usr/bin/tr -d '[:cntrl:]' \
+            | /usr/bin/cut -c 1-80
+    )"
+fi
+
+tool_name="$(json_value tool_name)"
+[[ -n "${tool_name}" ]] || tool_name="$(json_value tool)"
+tool_category=""
+if [[ "${event_name}" == "PreToolUse" || "${event_name}" == "PostToolUse" ]]; then
+    case "${tool_name}" in
+        Bash|exec_command|shell|local_shell) tool_category="shell" ;;
+        apply_patch|Edit|Write) tool_category="fileEdit" ;;
+        Agent|spawn_agent|*subagent*) tool_category="subagent" ;;
+        mcp__*|MCP*) tool_category="mcp" ;;
+        "") tool_category="unknown" ;;
+        *) tool_category="localTool" ;;
+    esac
+fi
+
+session_source=""
+if [[ "${event_name}" == "SessionStart" ]]; then
+    session_source="$(json_value source)"
+    case "${session_source}" in
+        startup|resume|clear|compact) ;;
+        *) session_source="startup" ;;
+    esac
+fi
+
+for _ in {1..30}; do
+    if /bin/mkdir "${lock_root}" 2>/dev/null; then
+        lock_acquired="true"
+        break
+    fi
+    /bin/sleep 0.05
+done
+[[ "${lock_acquired}" == "true" ]] || exit 0
+
+sequence_file="${data_root}/.sequence"
+latest_sequence="$(/bin/cat "${sequence_file}" 2>/dev/null)"
+[[ "${latest_sequence}" == <-> ]] || latest_sequence=0
+next_sequence=$((latest_sequence + 1))
+/usr/bin/printf '%s\n' "${next_sequence}" > "${sequence_file}" || exit 0
+sequence_name="$(/usr/bin/printf '%012d' "${next_sequence}")"
+occurred_at="$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+event_temp="${events_root}/.${sequence_name}.$$.json"
+turn_json="null"
+workspace_json="null"
+tool_json="null"
+source_json="null"
+[[ -n "${turn_hash}" ]] && turn_json="\"${turn_hash}\""
+[[ -n "${workspace_name}" ]] && workspace_json="\"$(json_escape "${workspace_name}")\""
+[[ -n "${tool_category}" ]] && tool_json="\"${tool_category}\""
+[[ -n "${session_source}" ]] && source_json="\"${session_source}\""
+/usr/bin/printf '%s\n' \
+    '{' \
+    "  \"bridgeProtocolVersion\": ${protocol_version}," \
+    "  \"installationIdentifier\": \"${installation_identifier}\"," \
+    "  \"sequence\": ${next_sequence}," \
+    '  "activity": {' \
+    "    \"schemaVersion\": ${event_schema_version}," \
+    "    \"event\": \"${event_name}\"," \
+    "    \"sessionHash\": \"${session_hash}\"," \
+    "    \"turnHash\": ${turn_json}," \
+    "    \"workspaceName\": ${workspace_json}," \
+    "    \"toolCategory\": ${tool_json}," \
+    "    \"sessionStartSource\": ${source_json}," \
+    "    \"occurredAt\": \"${occurred_at}\"" \
+    '  }' \
+    '}' > "${event_temp}" || exit 0
+/bin/mv -f -- "${event_temp}" "${events_root}/${sequence_name}.json" || exit 0
+event_temp=""
+
+status_temp="${data_root}/.status.$$.json"
+/usr/bin/printf '%s\n' \
+    '{' \
+    "  \"bridgeProtocolVersion\": ${protocol_version}," \
+    "  \"installationIdentifier\": \"${installation_identifier}\"," \
+    "  \"latestSequence\": ${next_sequence}," \
+    "  \"lastSuccessfulWriteAt\": \"${occurred_at}\"," \
+    '  "diagnosticStatus": "ok"' \
+    '}' > "${status_temp}" || exit 0
+/bin/mv -f -- "${status_temp}" "${data_root}/status.json"
+status_temp=""
+
+/bin/rmdir "${lock_root}" 2>/dev/null
+lock_acquired="false"
+
+# Keep at most 512 local events. Removal is limited to this plugin's events.
+event_count="$(
+    /usr/bin/find "${events_root}" -type f -name '[0-9]*.json' -maxdepth 1 \
+        | /usr/bin/wc -l \
+        | /usr/bin/tr -d ' '
+)"
+if [[ "${event_count}" == <-> && "${event_count}" -gt 512 ]]; then
+    remove_count=$((event_count - 512))
+    /usr/bin/find "${events_root}" -type f -name '[0-9]*.json' -maxdepth 1 \
+        | /usr/bin/sort \
+        | /usr/bin/head -n "${remove_count}" \
+        | while IFS= read -r expired_event; do
+            /bin/rm -f -- "${expired_event}"
+        done
+fi
+
+exit 0

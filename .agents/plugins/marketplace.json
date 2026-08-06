@@ -1,0 +1,20 @@
+{
+  "name": "quotaview-preview",
+  "interface": {
+    "displayName": "QuotaView Preview"
+  },
+  "plugins": [
+    {
+      "name": "quotaview",
+      "source": {
+        "source": "local",
+        "path": "./plugins/quotaview"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
