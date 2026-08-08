@@ -13,7 +13,13 @@
 
 ## 简体中文
 
-### 安装
+### 安装（无需打开终端）
+
+普通用户不需要手动执行安装命令。将下方提示词完整复制到一个新的 Codex 聊天窗口，
+Codex 会使用内置的插件管理命令添加此 Git Marketplace 并安装插件。
+
+> 本项目是第三方自定义 Git Marketplace，不是 OpenAI 官方插件市场条目。安装过程不会
+> 绕过 Codex 的命令审批、Hook 信任或 macOS 目录授权；这些安全确认仍由你本人完成。
 
 #### 第 1 步：确认运行环境
 
@@ -26,29 +32,32 @@
 
 本插件不是 OpenAI 官方插件，不会绕过 Codex 的审批、Hook 信任或沙盒机制。
 
-#### 第 2 步：添加插件市场
+#### 第 2 步：将安装提示词发送给 Codex
 
-在终端执行：
+复制下面的完整提示词，粘贴到 Codex 聊天窗口并发送：
 
-```sh
-codex plugin marketplace add Duoasa/QuotaView-for-Codex
+```text
+请直接帮我安装 QuotaView for Codex 插件，不要只提供操作说明，也不要让我打开终端。
+
+安装目标：
+- Git Marketplace：Duoasa/QuotaView-for-Codex
+- 插件：quotaview@quotaview-preview
+
+请按以下要求执行并验证：
+1. 使用 Codex 内置的插件管理命令检查该 Marketplace 是否已经配置。
+2. 如果尚未配置，添加 Duoasa/QuotaView-for-Codex；如果已经存在，先刷新它的 Git Marketplace 快照。
+3. 检查 quotaview@quotaview-preview 是否已经安装。如果尚未安装，直接安装；如果已经安装，不要卸载、重装或删除数据，只报告当前状态和版本。
+4. 只使用 codex plugin 与 codex plugin marketplace 提供的命令。不要手工编辑 ~/.codex，不要手动复制插件文件，也不要绕过 Hooks 信任。
+5. 安装后确认 Codex 能识别 QuotaView for Codex，并报告插件版本。不要读取或输出登录凭据、插件数据内容或完整本地路径。
+6. 最后明确告诉我安装是否成功、是否需要重启 Codex，以及重启后如何在设置中完成 Hooks 的 Review / Trust all。Hooks 信任必须由我本人确认。
+
+如果执行命令或访问 GitHub 需要授权，请直接发起对应的授权请求，等待我确认后继续。
 ```
 
-如果你在开发本地检出版本，请改用仓库目录：
+Codex 可能会弹出命令执行或网络访问授权。确认它正在执行 Codex 自带的插件管理操作后，
+再批准并让它继续。安装完成后，完全退出并重新打开 Codex。
 
-```sh
-codex plugin marketplace add /path/to/QuotaView-for-Codex
-```
-
-#### 第 3 步：安装插件
-
-```sh
-codex plugin add quotaview@quotaview-preview
-```
-
-安装完成后，完全退出并重新打开 Codex。
-
-#### 第 4 步：授权 Hooks
+#### 第 3 步：授权 Hooks
 
 在 Codex 中打开：
 
@@ -69,7 +78,7 @@ codex plugin add quotaview@quotaview-preview
 
 授权完成后，再次完全退出并重新打开 Codex，使 `SessionStart` 生效。
 
-#### 第 5 步：连接客户端软件
+#### 第 4 步：连接客户端软件
 
 QuotaView 用户可以在 Codex 中发送：
 
@@ -84,7 +93,7 @@ Codex 会调用插件的配对流程并打开 QuotaView。请在 macOS 文件选
 但必须由用户明确选择并授权插件数据目录；客户端不应读取 Codex 登录凭据或修改 Codex
 配置。
 
-#### 第 6 步：确认连接
+#### 第 5 步：确认连接
 
 在 Codex 中开始一个新任务，随后在客户端检查：
 
@@ -175,7 +184,15 @@ Protocol v1、获得用户明确目录授权的兼容 macOS 软件，都可以�
 
 ## English
 
-### Installation
+### Installation (no Terminal required)
+
+Regular users do not need to run installation commands manually. Copy the complete prompt below
+into a new Codex chat. Codex will use its built-in plugin-management commands to add this Git
+Marketplace and install the plugin.
+
+> This project is a third-party custom Git Marketplace, not an official OpenAI Marketplace
+> listing. Installation does not bypass command approval, Hook trust, or the macOS folder picker;
+> you remain in control of those security confirmations.
 
 #### Step 1: Check the requirements
 
@@ -189,29 +206,33 @@ Before installing, make sure that:
 This is not an official OpenAI plugin. It does not bypass Codex approvals, Hook trust, or
 sandboxing.
 
-#### Step 2: Add the marketplace
+#### Step 2: Send the installation prompt to Codex
 
-Run:
+Copy and send this complete prompt in a Codex chat:
 
-```sh
-codex plugin marketplace add Duoasa/QuotaView-for-Codex
+```text
+Install QuotaView for Codex for me directly. Do not only explain the steps, and do not ask me to open Terminal.
+
+Installation targets:
+- Git Marketplace: Duoasa/QuotaView-for-Codex
+- Plugin: quotaview@quotaview-preview
+
+Execute and verify the installation with these requirements:
+1. Use Codex's built-in plugin-management commands to check whether this Marketplace is already configured.
+2. If it is missing, add Duoasa/QuotaView-for-Codex. If it already exists, refresh its Git Marketplace snapshot first.
+3. Check whether quotaview@quotaview-preview is already installed. Install it if it is missing. If it is already installed, do not uninstall, reinstall, or delete data; only report its current status and version.
+4. Use only commands provided by codex plugin and codex plugin marketplace. Do not edit ~/.codex manually, copy plugin files manually, or bypass Hook trust.
+5. After installation, verify that Codex recognizes QuotaView for Codex and report the plugin version. Do not read or print credentials, plugin data contents, or full local paths.
+6. Finally, clearly tell me whether installation succeeded, whether Codex must restart, and how to complete Hooks Review / Trust all in Settings after restart. I must personally approve Hook trust.
+
+If command execution or GitHub access requires approval, request that approval directly and wait for me to confirm before continuing.
 ```
 
-For local development, add the checked-out repository instead:
+Codex may request permission to execute commands or access the network. Approve only after confirming
+that it is performing Codex's built-in plugin-management operations. Quit Codex completely and
+reopen it after installation.
 
-```sh
-codex plugin marketplace add /path/to/QuotaView-for-Codex
-```
-
-#### Step 3: Install the plugin
-
-```sh
-codex plugin add quotaview@quotaview-preview
-```
-
-Quit Codex completely and reopen it after installation.
-
-#### Step 4: Trust the Hooks
+#### Step 3: Trust the Hooks
 
 In Codex:
 
@@ -232,7 +253,7 @@ enabled and marked `trusted`:
 
 Quit and reopen Codex once more after trusting the Hooks so `SessionStart` can run.
 
-#### Step 5: Connect a client
+#### Step 4: Connect a client
 
 QuotaView users can send this prompt in Codex:
 
@@ -247,7 +268,7 @@ Other compatible applications can consume the same local Bridge Protocol v1 data
 interface is client-defined, but the user must explicitly select and authorize the plugin data
 directory. A client should never read Codex credentials or modify Codex configuration.
 
-#### Step 6: Verify the connection
+#### Step 5: Verify the connection
 
 Start a new Codex task, then check the client for:
 
