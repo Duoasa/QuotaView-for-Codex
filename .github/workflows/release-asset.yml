@@ -1,0 +1,52 @@
+name: Build fixed release asset
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing immutable tag to package
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  asset:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve fixed tag
+        id: release
+        env:
+          DISPATCH_TAG: ${{ inputs.tag }}
+          PUSH_TAG: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            release_tag="${DISPATCH_TAG}"
+          else
+            release_tag="${PUSH_TAG}"
+          fi
+          git rev-parse --verify "${release_tag}^{tag}" >/dev/null
+          echo "tag=${release_tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build and verify deterministic asset
+        run: |
+          scripts/build-release-asset.zsh \
+            "${{ steps.release.outputs.tag }}" \
+            "${RUNNER_TEMP}/release"
+
+      - name: Upload verified CI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuotaView-for-Codex-${{ steps.release.outputs.tag }}
+          path: ${{ runner.temp }}/release/*.tar.gz
+          if-no-files-found: error
+          retention-days: 30

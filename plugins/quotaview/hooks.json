@@ -6,8 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/quotaview-bridge\" SessionStart",
-            "timeout": 3,
+            "command": "\"${PLUGIN_ROOT}/scripts/quotaview-bridge\" SessionStart",
+            "timeout": 30,
             "statusMessage": "Updating QuotaView activity"
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/quotaview-bridge\" SessionEnd",
+            "command": "\"${PLUGIN_ROOT}/scripts/quotaview-bridge\" SessionEnd",
             "timeout": 3,
             "statusMessage": "Updating QuotaView activity"
           }
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/quotaview-bridge\" UserPromptSubmit",
+            "command": "\"${PLUGIN_ROOT}/scripts/quotaview-bridge\" UserPromptSubmit",
             "timeout": 3,
             "statusMessage": "Updating QuotaView activity"
           }
@@ -42,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/quotaview-bridge\" PreToolUse",
+            "command": "\"${PLUGIN_ROOT}/scripts/quotaview-bridge\" PreToolUse",
             "timeout": 3,
             "statusMessage": "Updating QuotaView activity"
           }
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/quotaview-bridge\" PostToolUse",
+            "command": "\"${PLUGIN_ROOT}/scripts/quotaview-bridge\" PostToolUse",
             "timeout": 3,
             "statusMessage": "Updating QuotaView activity"
           }
@@ -66,8 +66,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CODEX_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/quotaview-bridge\" Stop",
-            "timeout": 3,
+            "command": "\"${PLUGIN_ROOT}/scripts/quotaview-bridge\" Stop",
+            "timeout": 30,
             "statusMessage": "Updating QuotaView activity"
           }
         ]
