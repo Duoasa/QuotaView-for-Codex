@@ -34,6 +34,8 @@ jobs:
           else
             release_tag="${PUSH_TAG}"
           fi
+          git fetch --force origin \
+            "refs/tags/${release_tag}:refs/tags/${release_tag}"
           git rev-parse --verify "${release_tag}^{tag}" >/dev/null
           echo "tag=${release_tag}" >> "${GITHUB_OUTPUT}"
 
