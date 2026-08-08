@@ -12,10 +12,27 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Validate JSON
         run: |
           python3 -m json.tool plugins/quotaview/.codex-plugin/plugin.json >/dev/null
-          python3 -m json.tool plugins/quotaview/hooks/hooks.json >/dev/null
+          python3 -m json.tool plugins/quotaview/hooks.json >/dev/null
           python3 -m json.tool .agents/plugins/marketplace.json >/dev/null
       - name: Test bridge
         run: tests/test-bridge.zsh
+      - name: Check shell syntax
+        run: |
+          zsh -n \
+            plugins/quotaview/scripts/quotaview-bridge \
+            tests/test-bridge.zsh \
+            scripts/build-release-asset.zsh \
+            scripts/check-clean-install.zsh
+      - name: Validate release tooling against Preview 1
+        run: |
+          scripts/build-release-asset.zsh \
+            v1.0.0-preview.1 \
+            "${RUNNER_TEMP}/release"
+          echo \
+            "ed03dbc8651e4dd73f8079216daf28365f8aa172a324de5f94ca02a1bd6afd55  ${RUNNER_TEMP}/release/QuotaView-for-Codex-v1.0.0-preview.1.tar.gz" \
+            | shasum -a 256 -c -

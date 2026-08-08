@@ -4,14 +4,38 @@ set -euo pipefail
 
 repo_root="${0:A:h:h}"
 bridge="${repo_root}/plugins/quotaview/scripts/quotaview-bridge"
+mock_codex="${repo_root}/tests/fixtures/mock-codex-app-server"
+plugin_version="$(/usr/bin/plutil -extract version raw -o - \
+    "${repo_root}/plugins/quotaview/.codex-plugin/plugin.json")"
 test_root="$(mktemp -d /private/tmp/quotaview-plugin-test.XXXXXX)"
 trap '/bin/rm -rf -- "${test_root}"' EXIT
+
+# The manifest explicitly declares the plugin-root hooks file. Hook commands
+# run from the active workspace, so they must resolve through PLUGIN_ROOT.
+[[ -f "${repo_root}/plugins/quotaview/hooks.json" ]]
+[[ ! -e "${repo_root}/plugins/quotaview/hooks/hooks.json" ]]
+/usr/bin/python3 -m json.tool \
+    "${repo_root}/plugins/quotaview/hooks.json" >/dev/null
+[[ "$(/usr/bin/plutil -extract hooks raw -o - \
+    "${repo_root}/plugins/quotaview/.codex-plugin/plugin.json")" \
+    == "./hooks.json" ]]
+if ! /usr/bin/grep -q '\${PLUGIN_ROOT}/scripts/quotaview-bridge' \
+    "${repo_root}/plugins/quotaview/hooks.json"; then
+    print -u2 "Plugin hooks must resolve the bridge through PLUGIN_ROOT."
+    exit 1
+fi
+if /usr/bin/grep -q '"command": "\./scripts/' \
+    "${repo_root}/plugins/quotaview/hooks.json"; then
+    print -u2 "Plugin hook commands must not depend on the session cwd."
+    exit 1
+fi
 
 emit_event() {
     local event_name="$1"
     local tool_name="${2:-}"
     PLUGIN_DATA="${test_root}" \
-    CODEX_PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
+    PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
+    QUOTAVIEW_DISABLE_USAGE_REFRESH=1 \
         "${bridge}" "${event_name}" <<JSON
 {"session_id":"private-session","turn_id":"private-turn","cwd":"/Users/example/QuotaView","tool_name":"${tool_name}","prompt":"must-not-leak","tool_input":{"command":"must-not-leak"}}
 JSON
@@ -22,6 +46,96 @@ emit_event UserPromptSubmit
 emit_event PreToolUse apply_patch
 emit_event PostToolUse apply_patch
 emit_event Stop
+
+# SessionStart and Stop refresh usage in-process so Codex cannot reap a
+# detached refresh child when the lifecycle hook exits.
+automatic_root="${test_root}/automatic-refresh"
+mock_request_log="${test_root}/mock-app-server-requests.jsonl"
+PLUGIN_DATA="${automatic_root}" \
+PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
+CODEX_EXECUTABLE="${mock_codex}" \
+MOCK_CODEX_REQUEST_LOG="${mock_request_log}" \
+    "${bridge}" Stop <<JSON
+{"session_id":"automatic-session","turn_id":"automatic-turn","cwd":"/Users/example/QuotaView"}
+JSON
+[[ -f "${automatic_root}/events/000000000001.json" ]]
+[[ -f "${automatic_root}/usage.json" ]]
+if ! /usr/bin/grep -Fq "\"version\":\"${plugin_version}\"" \
+    "${mock_request_log}"; then
+    print -u2 "The app-server client version must match the plugin manifest."
+    exit 1
+fi
+
+# The usage path talks only to the official app-server protocol and persists
+# an allowlisted projection instead of the raw response.
+PLUGIN_DATA="${test_root}" \
+PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
+CODEX_EXECUTABLE="${mock_codex}" \
+QUOTAVIEW_USAGE_REFRESH_FORCE=1 \
+    "${bridge}" --refresh-usage
+[[ -f "${test_root}/usage.json" ]]
+[[ "$('/usr/bin/plutil' -extract usageSchemaVersion raw -o - \
+    "${test_root}/usage.json")" == "1" ]]
+[[ "$('/usr/bin/plutil' -extract primary.usedPercent raw -o - \
+    "${test_root}/usage.json")" == "17" ]]
+[[ "$('/usr/bin/plutil' -extract lifetimeTokens raw -o - \
+    "${test_root}/usage.json")" == "123456" ]]
+[[ "$('/usr/bin/plutil' -extract recentDailyTokens raw -o - \
+    "${test_root}/usage.json")" == "456" ]]
+[[ "$('/usr/bin/plutil' -extract recentDailyDate raw -o - \
+    "${test_root}/usage.json")" == "2026-08-08" ]]
+[[ "$('/usr/bin/plutil' -extract capabilities raw -o - \
+    "${test_root}/bridge.json")" == "2" ]]
+if /usr/bin/grep -E \
+    'must-not-copy|email|availableCount|resetCredit|longestStreak' \
+    "${test_root}/usage.json"; then
+    print -u2 "Raw or disallowed app-server data leaked into usage.json."
+    exit 1
+fi
+
+# Lifecycle hooks may fire frequently. Automatic usage refreshes are merged
+# into a five-minute window, while an expired snapshot refreshes immediately.
+recent_epoch=$(( $(/bin/date +%s) - 120 ))
+/usr/bin/touch -t "$(/bin/date -r "${recent_epoch}" +%Y%m%d%H%M.%S)" \
+    "${test_root}/usage.json"
+recent_mtime="$(/usr/bin/stat -f '%m' "${test_root}/usage.json")"
+PLUGIN_DATA="${test_root}" \
+PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
+CODEX_EXECUTABLE="${mock_codex}" \
+    "${bridge}" --refresh-usage
+[[ "$(/usr/bin/stat -f '%m' "${test_root}/usage.json")" \
+    == "${recent_mtime}" ]]
+
+expired_epoch=$(( $(/bin/date +%s) - 360 ))
+/usr/bin/touch -t "$(/bin/date -r "${expired_epoch}" +%Y%m%d%H%M.%S)" \
+    "${test_root}/usage.json"
+expired_mtime="$(/usr/bin/stat -f '%m' "${test_root}/usage.json")"
+PLUGIN_DATA="${test_root}" \
+PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
+CODEX_EXECUTABLE="${mock_codex}" \
+    "${bridge}" --refresh-usage
+[[ "$(/usr/bin/stat -f '%m' "${test_root}/usage.json")" \
+    -gt "${expired_mtime}" ]]
+
+# Current Codex plugin variables take precedence over compatibility aliases.
+official_data_root="${test_root}/official-data"
+legacy_data_root="${test_root}/legacy-data"
+PLUGIN_DATA="${official_data_root}" \
+PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
+CODEX_PLUGIN_DATA="${legacy_data_root}" \
+CODEX_PLUGIN_ROOT="/invalid-codex-plugin-root" \
+CLAUDE_PLUGIN_DATA="${legacy_data_root}" \
+CLAUDE_PLUGIN_ROOT="/invalid-claude-plugin-root" \
+    "${bridge}" --diagnose >/dev/null
+[[ -f "${official_data_root}/bridge.json" ]]
+[[ ! -e "${legacy_data_root}" ]]
+
+# Older Codex hosts can still use the documented compatibility aliases.
+compatibility_data_root="${test_root}/compatibility-data"
+CLAUDE_PLUGIN_DATA="${compatibility_data_root}" \
+CLAUDE_PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
+    "${bridge}" --diagnose >/dev/null
+[[ -f "${compatibility_data_root}/bridge.json" ]]
 
 event_count="$(
     /usr/bin/find "${test_root}/events" -type f -name '[0-9]*.json' \
@@ -82,10 +196,10 @@ created_before="$(
 /usr/bin/plutil -replace pluginVersion -string 0.0.0 \
     "${test_root}/bridge.json"
 PLUGIN_DATA="${test_root}" \
-CODEX_PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
+PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
     "${bridge}" --diagnose >/dev/null
 [[ "$(/usr/bin/plutil -extract pluginVersion raw -o - \
-    "${test_root}/bridge.json")" == "1.0.0-preview.1" ]]
+    "${test_root}/bridge.json")" == "${plugin_version}" ]]
 [[ "$(/usr/bin/plutil -extract installationIdentifier raw -o - \
     "${test_root}/bridge.json")" == "${installation_before}" ]]
 [[ "$(/usr/bin/plutil -extract createdAt raw -o - \
@@ -97,7 +211,7 @@ CODEX_PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
 /usr/bin/printf '%s\n' 'invalid"identifier' \
     > "${test_root}/.installation-id"
 PLUGIN_DATA="${test_root}" \
-CODEX_PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
+PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
     "${bridge}" --diagnose >/dev/null
 repaired_installation="$(
     /usr/bin/plutil -extract installationIdentifier raw -o - \
