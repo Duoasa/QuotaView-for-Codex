@@ -19,6 +19,33 @@ trap '/bin/rm -rf -- "${test_root}"' EXIT
 [[ "$(/usr/bin/plutil -extract hooks raw -o - \
     "${repo_root}/plugins/quotaview/.codex-plugin/plugin.json")" \
     == "./hooks.json" ]]
+[[ "$(/usr/bin/plutil -extract hooks.SessionStart.0.hooks.0.timeout \
+    raw -o - "${repo_root}/plugins/quotaview/hooks.json")" == "30" ]]
+[[ "$(/usr/bin/plutil -extract hooks.Stop.0.hooks.0.timeout \
+    raw -o - "${repo_root}/plugins/quotaview/hooks.json")" == "30" ]]
+[[ "$(/usr/bin/plutil -extract interface.logo raw -o - \
+    "${repo_root}/plugins/quotaview/.codex-plugin/plugin.json")" \
+    == "./assets/logo.png" ]]
+[[ "$(/usr/bin/plutil -extract interface.logoDark raw -o - \
+    "${repo_root}/plugins/quotaview/.codex-plugin/plugin.json")" \
+    == "./assets/logo.png" ]]
+[[ "$(/usr/bin/plutil -extract interface.composerIcon raw -o - \
+    "${repo_root}/plugins/quotaview/.codex-plugin/plugin.json")" \
+    == "./assets/composer-icon.png" ]]
+[[ "$(/usr/bin/plutil -extract description raw -o - \
+    "${repo_root}/plugins/quotaview/.codex-plugin/plugin.json")" \
+    == *"compatible apps"* ]]
+[[ "$(/usr/bin/plutil -extract interface.longDescription raw -o - \
+    "${repo_root}/plugins/quotaview/.codex-plugin/plugin.json")" \
+    == *"any compatible client"* ]]
+[[ -f "${repo_root}/plugins/quotaview/assets/logo.png" ]]
+[[ -f "${repo_root}/plugins/quotaview/assets/composer-icon.png" ]]
+[[ "$(/usr/bin/sips -g pixelWidth \
+    "${repo_root}/plugins/quotaview/assets/logo.png" 2>/dev/null \
+    | /usr/bin/awk '/pixelWidth/ {print $2}')" == "512" ]]
+[[ "$(/usr/bin/sips -g pixelWidth \
+    "${repo_root}/plugins/quotaview/assets/composer-icon.png" 2>/dev/null \
+    | /usr/bin/awk '/pixelWidth/ {print $2}')" == "64" ]]
 if ! /usr/bin/grep -q '\${PLUGIN_ROOT}/scripts/quotaview-bridge' \
     "${repo_root}/plugins/quotaview/hooks.json"; then
     print -u2 "Plugin hooks must resolve the bridge through PLUGIN_ROOT."
@@ -45,19 +72,23 @@ emit_event SessionStart
 emit_event UserPromptSubmit
 emit_event PreToolUse apply_patch
 emit_event PostToolUse apply_patch
-emit_event Stop
+stop_output="$(emit_event Stop)"
+[[ "${stop_output}" == "{}" ]]
 
 # SessionStart and Stop refresh usage in-process so Codex cannot reap a
 # detached refresh child when the lifecycle hook exits.
 automatic_root="${test_root}/automatic-refresh"
 mock_request_log="${test_root}/mock-app-server-requests.jsonl"
-PLUGIN_DATA="${automatic_root}" \
-PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
-CODEX_EXECUTABLE="${mock_codex}" \
-MOCK_CODEX_REQUEST_LOG="${mock_request_log}" \
-    "${bridge}" Stop <<JSON
+automatic_stop_output="$(
+    PLUGIN_DATA="${automatic_root}" \
+    PLUGIN_ROOT="${repo_root}/plugins/quotaview" \
+    CODEX_EXECUTABLE="${mock_codex}" \
+    MOCK_CODEX_REQUEST_LOG="${mock_request_log}" \
+        "${bridge}" Stop <<JSON
 {"session_id":"automatic-session","turn_id":"automatic-turn","cwd":"/Users/example/QuotaView"}
 JSON
+)"
+[[ "${automatic_stop_output}" == "{}" ]]
 [[ -f "${automatic_root}/events/000000000001.json" ]]
 [[ -f "${automatic_root}/usage.json" ]]
 if ! /usr/bin/grep -Fq "\"version\":\"${plugin_version}\"" \

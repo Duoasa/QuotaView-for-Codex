@@ -7,7 +7,7 @@
           {
             "type": "command",
             "command": "\"${PLUGIN_ROOT}/scripts/quotaview-bridge\" SessionStart",
-            "timeout": 3,
+            "timeout": 30,
             "statusMessage": "Updating QuotaView activity"
           }
         ]
@@ -67,7 +67,7 @@
           {
             "type": "command",
             "command": "\"${PLUGIN_ROOT}/scripts/quotaview-bridge\" Stop",
-            "timeout": 3,
+            "timeout": 30,
             "statusMessage": "Updating QuotaView activity"
           }
         ]

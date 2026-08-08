@@ -7,7 +7,7 @@ setopt NO_NOMATCH
 unsetopt BG_NICE
 umask 077
 
-plugin_version="1.0.0-preview.4"
+plugin_version="1.0.0-preview.7"
 protocol_version="1"
 event_schema_version="1"
 usage_schema_version="1"
@@ -478,6 +478,12 @@ if [[ "${QUOTAVIEW_DISABLE_USAGE_REFRESH:-0}" != "1" ]]; then
     case "${event_name}" in
         SessionStart|Stop) refresh_usage_snapshot >/dev/null 2>&1 ;;
     esac
+fi
+
+if [[ "${event_name}" == "Stop" ]]; then
+    # Codex Stop hooks use a JSON output contract. Return an empty object so
+    # this observer never requests continuation or injects model context.
+    /usr/bin/printf '%s\n' '{}'
 fi
 
 exit 0

@@ -1,7 +1,7 @@
 {
   "name": "quotaview",
-  "version": "1.0.0-preview.4",
-  "description": "Writes sanitized Codex usage snapshots and activity events for the QuotaView macOS app.",
+  "version": "1.0.0-preview.7",
+  "description": "Open local Codex data bridge that publishes sanitized usage snapshots and lifecycle events for QuotaView and other compatible apps.",
   "author": {
     "name": "Duoasa",
     "url": "https://github.com/Duoasa"
@@ -14,8 +14,8 @@
   "hooks": "./hooks.json",
   "interface": {
     "displayName": "QuotaView for Codex",
-    "shortDescription": "Private local Codex data bridge for QuotaView.",
-    "longDescription": "Uses official Codex read-only app-server methods to write a minimal usage snapshot plus sanitized lifecycle events. No prompts, commands, files, raw responses, account identifiers, or credentials are stored.",
+    "shortDescription": "Open local Codex data bridge for QuotaView and compatible apps.",
+    "longDescription": "Uses official Codex read-only app-server methods and supported Hooks to publish sanitized usage snapshots and lifecycle events for QuotaView or any compatible client. No prompts, commands, files, raw responses, account identifiers, or credentials are stored.",
     "developerName": "Duoasa",
     "category": "Productivity",
     "capabilities": ["Local", "Read-only", "Privacy"],
@@ -27,6 +27,9 @@
       "Check my QuotaView plugin connection.",
       "Explain what QuotaView Codex data stores."
     ],
-    "brandColor": "#3A3A3A"
+    "brandColor": "#3A3A3A",
+    "composerIcon": "./assets/composer-icon.png",
+    "logo": "./assets/logo.png",
+    "logoDark": "./assets/logo.png"
   }
 }
