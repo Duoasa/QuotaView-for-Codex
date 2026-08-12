@@ -107,6 +107,28 @@ Check my QuotaView plugin connection.
 > QuotaView is the reference client. Other applications can implement their own pairing UI and
 > consume the same Bridge Protocol v1 data after the user grants read-only folder access.
 
+## What is QuotaView for Codex?
+
+**QuotaView for Codex is a Codex plugin that publishes sanitized usage data and live task activity
+through a local, read-only bridge.** It runs inside Codex's supported plugin and Hooks system,
+turning approved Codex signals into a small, versioned data contract for QuotaView and other
+compatible macOS clients.
+
+The plugin provides two core data streams:
+
+- **Usage snapshots:** plan type, primary rate-window usage and reset time, normal Credits state,
+  limit state, lifetime tokens, and the newest daily token bucket. These fields come from two
+  read-only methods exposed by the official local `codex app-server`.
+- **Task activity events:** session start and end, prompt submission, tool execution, and task
+  completion. Events are captured through trusted Codex Hooks and reduced to privacy-preserving
+  lifecycle metadata before they are written locally.
+
+With this bridge, a compatible client can display Codex quota and reset information, update live
+task status, drive menu bar tools, Widgets, notifications, or Dynamic Island experiences, and
+diagnose whether fresh local data is available. Codex continues to own sign-in and network access;
+the plugin does not store prompts, model responses, commands, file contents, credentials, or raw
+app-server responses.
+
 ## Why QuotaView for Codex
 
 QuotaView for Codex turns supported Codex usage summaries and lifecycle Hooks into a small,

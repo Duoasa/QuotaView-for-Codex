@@ -103,6 +103,25 @@ Check my QuotaView plugin connection.
 > QuotaView 是参考客户端。其他应用可以实现自己的配对界面，并在用户授予只读目录权限
 > 后消费同一份 Bridge Protocol v1 数据。
 
+## 什么是 QuotaView for Codex？
+
+**QuotaView for Codex 是一个 Codex 插件，它通过本地只读数据桥提供脱敏用量数据和实时
+任务活动。** 插件运行在 Codex 支持的插件与 Hooks 体系内，将经过用户授权的 Codex 信号
+转换为小型、版本化的数据合同，供 QuotaView 和其他兼容 macOS 客户端读取。
+
+插件主要提供两类数据：
+
+- **用量快照：** 方案类型、主要额度窗口用量与重置时间、普通 Credits 状态、限制状态、
+  累计 Token 和最新每日 Token 桶。这些字段来自官方本地 `codex app-server` 提供的两个
+  只读方法。
+- **任务活动事件：** 会话开始与结束、提交提示词、工具执行和任务完成。事件由受信任的
+  Codex Hooks 捕获，并在写入本地前被缩减为保护隐私的生命周期元数据。
+
+通过这个数据桥，兼容客户端可以展示 Codex 额度和重置时间、实时更新任务状态、驱动
+菜单栏工具、Widget、通知或灵动岛，并诊断本地数据是否保持新鲜。登录与网络访问仍由
+Codex 管理；插件不会保存提示词、模型回复、命令、文件内容、凭据或原始 app-server
+响应。
+
 ## 为什么使用 QuotaView for Codex
 
 QuotaView for Codex 将 Codex 支持的用量摘要和生命周期 Hooks 转换为小型、版本化的本地
