@@ -7,7 +7,7 @@ setopt NO_NOMATCH
 unsetopt BG_NICE
 umask 077
 
-plugin_version="1.0.0-preview.7"
+plugin_version="1.0.0-preview.8"
 protocol_version="1"
 event_schema_version="1"
 usage_schema_version="1"
@@ -207,6 +207,10 @@ refresh_usage_snapshot() {
     local lifetime_tokens=""
     local recent_daily_tokens=""
     local recent_daily_date=""
+    local spark_used_percent=""
+    local spark_window_duration=""
+    local spark_resets_at=""
+    local daily_usage_json="[]"
 
     coproc "${codex_executable}" app-server 2>/dev/null
     server_pid="$!"
@@ -237,15 +241,38 @@ refresh_usage_snapshot() {
                 balance="$(rpc_value result.rateLimits.credits.balance "${response}")"
                 reached_type="$(rpc_value result.rateLimits.rateLimitReachedType "${response}")"
                 spend_control_reached="$(rpc_value result.rateLimits.spendControlReached "${response}")"
+                spark_used_percent="$(rpc_value result.rateLimitsByLimitId.codex_bengalfox.primary.usedPercent "${response}")"
+                spark_window_duration="$(rpc_value result.rateLimitsByLimitId.codex_bengalfox.primary.windowDurationMins "${response}")"
+                spark_resets_at="$(rpc_value result.rateLimitsByLimitId.codex_bengalfox.primary.resetsAt "${response}")"
                 ;;
             3)
                 usage_finished="true"
                 lifetime_tokens="$(rpc_value result.summary.lifetimeTokens "${response}")"
                 local daily_count="$(rpc_value result.dailyUsageBuckets "${response}")"
                 if [[ "${daily_count}" == <-> && "${daily_count}" -gt 0 ]]; then
-                    local latest_index=$((daily_count - 1))
-                    recent_daily_tokens="$(rpc_value "result.dailyUsageBuckets.${latest_index}.tokens" "${response}")"
-                    recent_daily_date="$(rpc_value "result.dailyUsageBuckets.${latest_index}.startDate" "${response}")"
+                    local daily_start_index=0
+                    local daily_index
+                    local daily_tokens
+                    local daily_date
+                    local appended_daily="false"
+                    if [[ "${daily_count}" -gt 190 ]]; then
+                        daily_start_index=$((daily_count - 190))
+                    fi
+                    daily_usage_json="["
+                    for ((daily_index = daily_start_index; daily_index < daily_count; daily_index++)); do
+                        daily_tokens="$(rpc_value "result.dailyUsageBuckets.${daily_index}.tokens" "${response}")"
+                        daily_date="$(rpc_value "result.dailyUsageBuckets.${daily_index}.startDate" "${response}")"
+                        if [[ "${daily_tokens}" == <-> \
+                              && "${daily_date}" =~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' ]]; then
+                            [[ "${appended_daily}" == "true" ]] \
+                                && daily_usage_json+=","
+                            daily_usage_json+="{\"startDate\":\"${daily_date}\",\"tokens\":${daily_tokens}}"
+                            appended_daily="true"
+                            recent_daily_tokens="${daily_tokens}"
+                            recent_daily_date="${daily_date}"
+                        fi
+                    done
+                    daily_usage_json+="]"
                 fi
                 ;;
         esac
@@ -272,6 +299,14 @@ refresh_usage_snapshot() {
         || unlimited=""
     [[ "${balance}" =~ '^-?[0-9]+([.][0-9]+)?$' ]] || balance=""
     [[ "${lifetime_tokens}" == <-> ]] || lifetime_tokens="null"
+    if [[ "${spark_used_percent}" != <-> \
+          || "${spark_used_percent}" -lt 0 \
+          || "${spark_used_percent}" -gt 100 ]]; then
+        spark_used_percent=""
+    fi
+    [[ "${spark_window_duration}" == <-> ]] \
+        || spark_window_duration="null"
+    [[ "${spark_resets_at}" == <-> ]] || spark_resets_at="null"
     if [[ "${recent_daily_tokens}" != <-> \
           || ! "${recent_daily_date}" =~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' ]]; then
         recent_daily_tokens="null"
@@ -290,6 +325,12 @@ refresh_usage_snapshot() {
           || "${spend_control_reached}" == "true" ]]; then
         limit_reached="true"
     fi
+    local spark_json="null"
+    if [[ -n "${spark_used_percent}" ]]; then
+        spark_json="{\"usedPercent\":${spark_used_percent},"
+        spark_json+="\"windowDurationMins\":${spark_window_duration},"
+        spark_json+="\"resetsAt\":${spark_resets_at}}"
+    fi
     local captured_at="$(/bin/date -u +%Y-%m-%dT%H:%M:%SZ)"
     usage_temp="${data_root}/.usage.$$.json"
     /usr/bin/printf '%s\n' \
@@ -305,11 +346,13 @@ refresh_usage_snapshot() {
         "    \"windowDurationMins\": ${window_duration}," \
         "    \"resetsAt\": ${resets_at}" \
         '  },' \
+        "  \"spark\": ${spark_json}," \
         "  \"credits\": ${credits_json}," \
         "  \"limitReached\": ${limit_reached}," \
         "  \"lifetimeTokens\": ${lifetime_tokens}," \
         "  \"recentDailyTokens\": ${recent_daily_tokens}," \
-        "  \"recentDailyDate\": $(json_string_or_null "${recent_daily_date}")" \
+        "  \"recentDailyDate\": $(json_string_or_null "${recent_daily_date}")," \
+        "  \"dailyUsageBuckets\": ${daily_usage_json}" \
         '}' > "${usage_temp}" || return 1
     /bin/chmod 600 "${usage_temp}" 2>/dev/null
     /bin/mv -f -- "${usage_temp}" "${usage_path}" || return 1

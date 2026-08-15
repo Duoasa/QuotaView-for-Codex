@@ -1,6 +1,6 @@
 {
   "name": "quotaview",
-  "version": "1.0.0-preview.7",
+  "version": "1.0.0-preview.8",
   "description": "Open local Codex data bridge that publishes sanitized usage snapshots and lifecycle events for QuotaView and other compatible apps.",
   "author": {
     "name": "Duoasa",

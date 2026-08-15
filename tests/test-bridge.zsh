@@ -109,11 +109,21 @@ QUOTAVIEW_USAGE_REFRESH_FORCE=1 \
     "${test_root}/usage.json")" == "1" ]]
 [[ "$('/usr/bin/plutil' -extract primary.usedPercent raw -o - \
     "${test_root}/usage.json")" == "17" ]]
+[[ "$('/usr/bin/plutil' -extract spark.usedPercent raw -o - \
+    "${test_root}/usage.json")" == "29" ]]
+[[ "$('/usr/bin/plutil' -extract spark.windowDurationMins raw -o - \
+    "${test_root}/usage.json")" == "10080" ]]
 [[ "$('/usr/bin/plutil' -extract lifetimeTokens raw -o - \
     "${test_root}/usage.json")" == "123456" ]]
 [[ "$('/usr/bin/plutil' -extract recentDailyTokens raw -o - \
     "${test_root}/usage.json")" == "456" ]]
 [[ "$('/usr/bin/plutil' -extract recentDailyDate raw -o - \
+    "${test_root}/usage.json")" == "2026-08-08" ]]
+[[ "$('/usr/bin/plutil' -extract dailyUsageBuckets raw -o - \
+    "${test_root}/usage.json")" == "2" ]]
+[[ "$('/usr/bin/plutil' -extract dailyUsageBuckets.0.tokens raw -o - \
+    "${test_root}/usage.json")" == "123" ]]
+[[ "$('/usr/bin/plutil' -extract dailyUsageBuckets.1.startDate raw -o - \
     "${test_root}/usage.json")" == "2026-08-08" ]]
 [[ "$('/usr/bin/plutil' -extract capabilities raw -o - \
     "${test_root}/bridge.json")" == "2" ]]

@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Duoasa/QuotaView-for-Codex/releases/tag/v1.0.0-preview.7"><img alt="最新版本" src="https://img.shields.io/github/v/release/Duoasa/QuotaView-for-Codex?include_prereleases&amp;display_name=tag"></a>
+  <a href="https://github.com/Duoasa/QuotaView-for-Codex/releases/tag/v1.0.0-preview.8"><img alt="最新版本" src="https://img.shields.io/github/v/release/Duoasa/QuotaView-for-Codex?include_prereleases&amp;display_name=tag"></a>
   <a href="https://github.com/Duoasa/QuotaView-for-Codex/actions/workflows/test.yml"><img alt="CI 状态" src="https://github.com/Duoasa/QuotaView-for-Codex/actions/workflows/test.yml/badge.svg"></a>
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-111111?logo=apple">
   <a href="LICENSE"><img alt="MIT 许可证" src="https://img.shields.io/badge/License-MIT-2ea44f"></a>
@@ -18,7 +18,7 @@
 <p align="center">
   <a href="#installation"><strong>通过 Codex 安装</strong></a>
   ·
-  <a href="https://github.com/Duoasa/QuotaView-for-Codex/releases/tag/v1.0.0-preview.7">Preview 7 Release</a>
+  <a href="https://github.com/Duoasa/QuotaView-for-Codex/releases/tag/v1.0.0-preview.8">Preview 8 Release</a>
   ·
   <a href="#privacy-by-design">隐私</a>
   ·
@@ -92,7 +92,7 @@ Connect QuotaView to Codex.
 
 ### 5. 确认连接
 
-开始一个新的 Codex 任务，确认客户端收到插件版本 `1.0.0-preview.7`、脱敏用量快照、
+开始一个新的 Codex 任务，确认客户端收到插件版本 `1.0.0-preview.8`、脱敏用量快照、
 生命周期事件和最终 `Stop` 事件。也可以发送：
 
 ```text
@@ -111,9 +111,9 @@ Check my QuotaView plugin connection.
 
 插件主要提供两类数据：
 
-- **用量快照：** 方案类型、主要额度窗口用量与重置时间、普通 Credits 状态、限制状态、
-  累计 Token 和最新每日 Token 桶。这些字段来自官方本地 `codex app-server` 提供的两个
-  只读方法。
+- **用量快照：** 方案类型、主要与 Spark 额度窗口用量/重置时间、普通 Credits 状态、
+  限制状态、累计 Token 和有界的每日 Token 历史。这些字段来自官方本地
+  `codex app-server` 提供的两个只读方法。
 - **任务活动事件：** 会话开始与结束、提交提示词、工具执行和任务完成。事件由受信任的
   Codex Hooks 捕获，并在写入本地前被缩减为保护隐私的生命周期元数据。
 
@@ -162,9 +162,9 @@ Codex 负责登录以及 `codex app-server` 所需的网络访问。插件不读
 
 | 数据组 | 白名单字段 | 来源 |
 | --- | --- | --- |
-| 方案与额度窗口 | 方案类型、已用比例、窗口时长、重置时间 | `account/rateLimits/read` |
+| 方案与额度窗口 | 方案类型，以及主要/Spark 窗口的已用比例、窗口时长和重置时间 | `account/rateLimits/read` |
 | Credits 与限制 | `hasCredits`、`unlimited`、余额、是否触达限制 | `account/rateLimits/read` |
-| Token 摘要 | 累计 Token 和最新每日 Token 桶 | `account/usage/read` |
+| Token 摘要 | 累计 Token 和最多最新 190 个脱敏每日 Token 桶 | `account/usage/read` |
 | 生命周期 | 事件类型、UTC 时间、协议/结构版本、单调序号 | Codex Hooks |
 | 活动上下文 | 会话/Turn 单向哈希、工作区末级目录名、粗粒度工具类别、会话启动来源 | Codex Hooks |
 | Bridge 健康 | 插件/协议版本、安装身份、能力、最近写入和序号 | 本地 Bridge |
@@ -189,8 +189,8 @@ Codex 负责登录以及 `codex app-server` 所需的网络访问。插件不读
 
 | 方法 | 用途 |
 | --- | --- |
-| `account/rateLimits/read` | 提供白名单方案、额度窗口、Credits 和限制字段 |
-| `account/usage/read` | 提供累计 Token 和最新每日 Token 桶 |
+| `account/rateLimits/read` | 提供白名单方案、主要/Spark 额度窗口、Credits 和限制字段 |
+| `account/usage/read` | 提供累计 Token 和最多最新 190 个每日 Token 桶 |
 
 这些是插件到 Codex 的本地调用，不是公开 HTTP 接口。原始响应不会落盘。
 
@@ -234,7 +234,7 @@ QUOTAVIEW_USAGE_REFRESH_FORCE=1 \
 | 文件 | 关键字段 | 客户端说明 |
 | --- | --- | --- |
 | `bridge.json` | `pluginId`、插件/协议/结构版本、`installationIdentifier`、`createdAt`、能力 | 首先校验；当前能力为 `codex-activity-events` 和 `codex-usage-snapshot` |
-| `usage.json` | 采集时间/来源、方案、主要窗口、Credits、限制状态、Token 摘要 | 仅在协议和安装身份与 `bridge.json` 一致时消费 |
+| `usage.json` | 采集时间/来源、方案、主要/Spark 窗口、Credits、限制状态、累计 Token、有界每日桶 | 仅在协议和安装身份与 `bridge.json` 一致时消费；Spark 与每日历史是 v1 可选扩展 |
 | `status.json` | 协议、安装身份、`latestSequence`、最近成功写入、诊断状态 | 用于发现最新事件和 Bridge 健康状态 |
 | `events/*.json` | 协议、安装身份、序号、脱敏活动载荷 | 不可变、补零命名、单调递增，只保留最新 512 条 |
 

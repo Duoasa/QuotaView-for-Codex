@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Duoasa/QuotaView-for-Codex/releases/tag/v1.0.0-preview.7"><img alt="Latest release" src="https://img.shields.io/github/v/release/Duoasa/QuotaView-for-Codex?include_prereleases&amp;display_name=tag"></a>
+  <a href="https://github.com/Duoasa/QuotaView-for-Codex/releases/tag/v1.0.0-preview.8"><img alt="Latest release" src="https://img.shields.io/github/v/release/Duoasa/QuotaView-for-Codex?include_prereleases&amp;display_name=tag"></a>
   <a href="https://github.com/Duoasa/QuotaView-for-Codex/actions/workflows/test.yml"><img alt="CI status" src="https://github.com/Duoasa/QuotaView-for-Codex/actions/workflows/test.yml/badge.svg"></a>
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-111111?logo=apple">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-2ea44f"></a>
@@ -18,7 +18,7 @@
 <p align="center">
   <a href="#installation"><strong>Install with Codex</strong></a>
   ·
-  <a href="https://github.com/Duoasa/QuotaView-for-Codex/releases/tag/v1.0.0-preview.7">Preview 7 release</a>
+  <a href="https://github.com/Duoasa/QuotaView-for-Codex/releases/tag/v1.0.0-preview.8">Preview 8 release</a>
   ·
   <a href="#privacy-by-design">Privacy</a>
   ·
@@ -96,7 +96,7 @@ both remain under the user's control.
 
 ### 5. Verify the connection
 
-Start a new Codex task and confirm that the client receives plugin version `1.0.0-preview.7`, a
+Start a new Codex task and confirm that the client receives plugin version `1.0.0-preview.8`, a
 sanitized usage snapshot, lifecycle events, and a final `Stop` event. You can also send:
 
 ```text
@@ -116,9 +116,9 @@ compatible macOS clients.
 
 The plugin provides two core data streams:
 
-- **Usage snapshots:** plan type, primary rate-window usage and reset time, normal Credits state,
-  limit state, lifetime tokens, and the newest daily token bucket. These fields come from two
-  read-only methods exposed by the official local `codex app-server`.
+- **Usage snapshots:** plan type, primary and Spark rate-window usage/reset times, normal Credits
+  state, limit state, lifetime tokens, and a bounded daily token history. These fields come from
+  two read-only methods exposed by the official local `codex app-server`.
 - **Task activity events:** session start and end, prompt submission, tool execution, and task
   completion. Events are captured through trusted Codex Hooks and reduced to privacy-preserving
   lifecycle metadata before they are written locally.
@@ -169,9 +169,9 @@ read authentication files, store tokens, or make direct HTTP requests.
 
 | Data group | Allowlisted fields | Source |
 | --- | --- | --- |
-| Plan and rate window | Plan type, used percentage, window duration, reset time | `account/rateLimits/read` |
+| Plan and rate windows | Plan type plus primary and Spark used percentage, window duration, and reset time | `account/rateLimits/read` |
 | Credits and limits | `hasCredits`, `unlimited`, balance, limit-reached state | `account/rateLimits/read` |
-| Token summary | Lifetime tokens and the newest daily token bucket | `account/usage/read` |
+| Token summary | Lifetime tokens and up to the newest 190 sanitized daily token buckets | `account/usage/read` |
 | Lifecycle | Event type, UTC time, protocol/schema versions, monotonic sequence | Codex Hooks |
 | Activity context | One-way session/turn hashes, final workspace folder name, coarse tool category, session-start source | Codex Hooks |
 | Bridge health | Plugin/protocol versions, installation identity, capabilities, latest write and sequence | Local bridge |
@@ -197,8 +197,8 @@ folder name and capped at 80 characters. Tool names are reduced to `shell`, `fil
 
 | Method | Purpose |
 | --- | --- |
-| `account/rateLimits/read` | Supplies the allowlisted plan, rate-window, Credits, and limit fields |
-| `account/usage/read` | Supplies lifetime tokens and the newest daily token bucket |
+| `account/rateLimits/read` | Supplies the allowlisted plan, primary/Spark rate windows, Credits, and limit fields |
+| `account/usage/read` | Supplies lifetime tokens and up to the newest 190 daily token buckets |
 
 These are local plugin-to-Codex calls, not public HTTP endpoints. Raw responses are never
 persisted.
@@ -244,7 +244,7 @@ The plugin writes only inside its own `PLUGIN_DATA` directory:
 | File | Key fields | Consumer notes |
 | --- | --- | --- |
 | `bridge.json` | `pluginId`, plugin/protocol/schema versions, `installationIdentifier`, `createdAt`, capabilities | Validate first; current capabilities are `codex-activity-events` and `codex-usage-snapshot` |
-| `usage.json` | Capture time/source, plan, primary window, Credits, limit state, token summary | Consume only when protocol and installation identity match `bridge.json` |
+| `usage.json` | Capture time/source, plan, primary/Spark windows, Credits, limit state, lifetime tokens, bounded daily buckets | Consume only when protocol and installation identity match `bridge.json`; Spark and daily history are optional v1 additions |
 | `status.json` | Protocol, installation identity, `latestSequence`, latest successful write, diagnostic state | Use to discover the newest event and bridge health |
 | `events/*.json` | Protocol, installation identity, sequence, sanitized activity payload | Immutable, zero-padded, monotonically increasing; newest 512 retained |
 

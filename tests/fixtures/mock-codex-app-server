@@ -12,7 +12,7 @@ while IFS= read -r request; do
             /usr/bin/printf '%s\n' '{"id":1,"result":{"serverInfo":{"name":"mock","version":"1"}}}'
             ;;
         *'"id":2'*'"account/rateLimits/read"'*)
-            /usr/bin/printf '%s\n' '{"id":2,"result":{"rateLimits":{"planType":"plus","primary":{"usedPercent":17,"windowDurationMins":10080,"resetsAt":1893456000},"credits":{"hasCredits":true,"unlimited":false,"balance":"4.99"},"rateLimitReachedType":null,"spendControlReached":false},"rateLimitResetCredits":{"availableCount":99,"credits":[{"id":"must-not-copy"}]}}}'
+            /usr/bin/printf '%s\n' '{"id":2,"result":{"rateLimits":{"planType":"plus","primary":{"usedPercent":17,"windowDurationMins":10080,"resetsAt":1893456000},"credits":{"hasCredits":true,"unlimited":false,"balance":"4.99"},"rateLimitReachedType":null,"spendControlReached":false},"rateLimitsByLimitId":{"codex_bengalfox":{"limitId":"codex_bengalfox","limitName":"Spark","primary":{"usedPercent":29,"windowDurationMins":10080,"resetsAt":1894060800},"secondary":null,"credits":null,"individualLimit":null,"spendControlReached":false,"planType":"plus","rateLimitReachedType":null}},"rateLimitResetCredits":{"availableCount":99,"credits":[{"id":"must-not-copy"}]}}}'
             ;;
         *'"id":3'*'"account/usage/read"'*)
             /usr/bin/printf '%s\n' '{"id":3,"result":{"summary":{"lifetimeTokens":123456,"longestStreakDays":999},"dailyUsageBuckets":[{"startDate":"2026-08-07","tokens":123},{"startDate":"2026-08-08","tokens":456}],"email":"must-not-copy@example.com"}}'
