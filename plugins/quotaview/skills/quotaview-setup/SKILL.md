@@ -1,6 +1,6 @@
 ---
 name: quotaview-setup
-description: Connect, diagnose, explain, refresh, or disconnect the QuotaView for Codex local usage and activity bridge. Use when the user asks to connect QuotaView, refresh quota, pair the Codex Island, check plugin status, inspect privacy, or troubleshoot missing data.
+description: Pair, diagnose, refresh, or disconnect the QuotaView plugin bridge; explain its local data and permissions.
 ---
 
 # QuotaView for Codex setup
@@ -12,6 +12,14 @@ network access; the plugin never reads auth files or makes direct HTTP requests.
 It never writes prompts, command text, tool input/output, file paths or
 contents, model responses, reasoning, account identifiers, email, tokens,
 cookies, credentials, reset-credit inventory, or raw app-server responses.
+
+## Choose the requested action
+
+Use only the action the user requested. Pairing is not a prerequisite for status,
+privacy, or refresh requests. Existing authorization for an action remains valid;
+complete its available checks without a second generic confirmation. Actual Codex
+Hook trust and macOS folder consent must still be completed by the user.
+For the stored-data contract, read [privacy](references/privacy.md) only as needed.
 
 ## Connect QuotaView
 
@@ -38,7 +46,7 @@ Report only the protocol version, plugin version, whether a local event and
 sanitized usage snapshot exist, and that authentication is managed by official
 Codex. Do not print the full data path or file contents.
 
-If QuotaView says “Waiting for Event,” ask the user to verify all five items:
+If QuotaView says “Waiting for Event,” use the diagnosis to narrow the missing condition. Ask the user only about items that tools cannot establish, instead of repeating the full checklist:
 
 - the plugin is installed and enabled;
 - Hooks are enabled and trusted in Codex;
@@ -59,23 +67,12 @@ Frequent lifecycle events are merged into that five-minute window.
 
 Do not print `usage.json` or any app-server response.
 
-## Explain privacy
+## Completion
 
-The bridge stores only:
-
-- one-way hashes of session and optional turn identifiers;
-- the final workspace folder name, capped at 80 characters;
-- a coarse tool category;
-- lifecycle event, UTC timestamp, protocol version, installation ID, sequence;
-- plugin health metadata.
-- plan type, primary and optional Spark window used
-  percentage/duration/reset time, normal Credits balance flags, limit-reached
-  state, lifetime tokens, and up to the newest 190 daily token buckets.
-
-These files remain local and events rotate after the newest 512 records. The
-plugin does not upload them. Official Codex may use its own authenticated
-network connection while serving the two read-only app-server requests.
-QuotaView does not modify these files.
+Report the requested action's result and any actual remaining system consent or
+new-event requirement. A successful command alone does not prove that QuotaView
+is displaying events; do not claim pairing or live activity without evidence.
+If consent is pending, complete independent diagnosis and give the exact next step.
 
 ## Disconnect or uninstall
 
